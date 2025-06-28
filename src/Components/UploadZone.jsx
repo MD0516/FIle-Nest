@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const UploadZone = ({ title, type, fileFormats, multiple, errorFile, handleSubmit }) => {
+const UploadZone = ({ title, type, fileFormats, multiple, errorFile }) => {
   const fileInputRef = useRef();
   const [fileName, setFileName] = useState([]);
   const [onDrag, setOnDrag] = useState(false);
@@ -49,13 +49,43 @@ const UploadZone = ({ title, type, fileFormats, multiple, errorFile, handleSubmi
     };
   }, []);
 
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
+  const file = uploadedFile || fileInputRef.current?.files[0];
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const response = await fetch("https://file-nest-api.onrender.com/convert/pdf-to-word", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error("Conversion failed");
+    }
+
+    const data = await response.json();
+
+    if ( data.downloadURL) {
+      const link = document.createElement('a');
+      link.href = data.downloadURL;
+      link.setAttribute('download', data.fileName || 'converted-file.docx');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+  } catch (error) {
+    console.error("Upload or conversion failed:", error);
+    alert("Something went wrong during conversion.");
+  }
+};
 
   return (
     <>
-      {uploadedFile ? (
-        <div>
-        </div>) : (<form encType='multipart/form-data' onSubmit={handleSubmit}>
+          <form encType='multipart/form-data' onSubmit={handleSubmit}>
         <div
           className={`flex flex-col items-center h-full w-full`}
           onDragOver={handleDragOver}
@@ -92,7 +122,7 @@ const UploadZone = ({ title, type, fileFormats, multiple, errorFile, handleSubmi
         </div>
 
         <button type='submit'>Convert</button>
-      </form>)}
+      </form>
     </>
   );
 };
